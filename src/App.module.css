@@ -1,0 +1,9 @@
+.app {
+  min-height: 100vh;
+  padding: 16px 14px 40px;
+}
+
+.inner {
+  max-width: 720px;
+  margin: 0 auto;
+}

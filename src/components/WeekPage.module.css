@@ -1,0 +1,139 @@
+.loading {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 10px 0;
+}
+
+.weekNav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.weekTitle {
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.weekRange {
+  font-size: 11px;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.weekPicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 14px;
+}
+
+.bizGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.bizRow {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bizRow:last-child {
+  border-bottom: none;
+}
+
+.bizLabel {
+  font-size: 11px;
+}
+
+.fieldRow {
+  margin-bottom: 12px;
+}
+
+.lbl {
+  display: block;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
+}
+
+.saveBar {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.hint { font-size: 10px; color: var(--muted); }
+.ok   { font-size: 10px; color: var(--success); }
+.err  { font-size: 10px; color: var(--danger); }
+
+.trend {
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
+.trendTitle {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+}
+
+.trendBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+}
+
+.trendCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.trendBarWrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border);
+}
+
+.trendBar {
+  width: 100%;
+  background: var(--fg);
+  min-height: 1px;
+  transition: height 0.3s ease;
+}
+
+.trendLbl {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.trendNote {
+  font-size: 9px;
+  color: var(--muted);
+  margin-top: 8px;
+}

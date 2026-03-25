@@ -1,0 +1,255 @@
+.h2 {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 1px solid var(--fg);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.intro {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--fg);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.phase {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.phase:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.phaseDot {
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--fg);
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.phaseCurrent .phaseDot {
+  background: var(--fg);
+}
+
+.phaseContent {
+  flex: 1;
+}
+
+.phaseLabel {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.phaseCurrent .phaseLabel {
+  text-decoration: underline;
+}
+
+.phaseDates {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.phaseDays {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.phaseActive {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 3px;
+}
+
+.targetRow {
+  display: flex;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+
+.targetRow:last-child {
+  border-bottom: none;
+}
+
+.targetBullet {
+  font-size: 12px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.targetText {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.focusBlock {
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.focusTitle {
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.focusDesc {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pillar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.pillarLetter {
+  font-size: 20px;
+  font-weight: bold;
+  flex-shrink: 0;
+  width: 24px;
+  line-height: 1;
+}
+
+.pillarLabel {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.pillarDesc {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.schedHint {
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.schedRow {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+}
+
+.schedRow:last-child { border-bottom: none; }
+
+.schedTime {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--muted);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.schedAct {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.triggerRow {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.triggerRow:last-child { border-bottom: none; }
+
+.triggerLabel {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.triggerResponse {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.ruleRow {
+  display: flex;
+  gap: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+
+.ruleRow:last-child { border-bottom: none; }
+
+.ruleNum {
+  font-size: 18px;
+  font-weight: bold;
+  flex-shrink: 0;
+  width: 20px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.ruleLabel {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.ruleDesc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.truth {
+  margin-top: 14px;
+  border: 2px solid var(--fg);
+  padding: 16px;
+}
+
+.truthTitle {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+}
+
+.truthBody {
+  font-size: 12px;
+  line-height: 1.9;
+  color: var(--muted);
+}

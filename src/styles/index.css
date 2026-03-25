@@ -1,0 +1,127 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:       #ffffff;
+  --fg:       #111111;
+  --muted:    #666666;
+  --border:   #cccccc;
+  --border-d: #888888;
+  --surface:  #f5f5f5;
+  --inv-bg:   #111111;
+  --inv-fg:   #ffffff;
+  --mono: 'Courier New', Courier, monospace;
+  --danger: #cc0000;
+  --success: #006600;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:       #111111;
+    --fg:       #eeeeee;
+    --muted:    #888888;
+    --border:   #444444;
+    --border-d: #666666;
+    --surface:  #1c1c1c;
+    --inv-bg:   #eeeeee;
+    --inv-fg:   #111111;
+  }
+}
+
+html, body, #root {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+button {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  border: 1px solid var(--fg);
+  padding: 7px 14px;
+  cursor: pointer;
+  background: var(--bg);
+  color: var(--fg);
+  transition: background 0.1s, color 0.1s;
+  border-radius: 0;
+}
+
+button:hover:not(:disabled) {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+button.inv {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+button.inv:hover:not(:disabled) {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+button.sm {
+  font-size: 10px;
+  padding: 5px 10px;
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  font-family: var(--mono);
+  font-size: 12px;
+  border: 1px solid var(--fg);
+  padding: 6px 8px;
+  background: var(--bg);
+  color: var(--fg);
+  width: 100%;
+  outline: none;
+  border-radius: 0;
+  resize: vertical;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  border-color: var(--fg);
+  outline: 2px solid var(--fg);
+  outline-offset: 1px;
+}
+
+input:disabled,
+textarea:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--fg);
+  flex-shrink: 0;
+}
+
+a {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+/* scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); }

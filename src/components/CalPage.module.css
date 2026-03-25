@@ -1,0 +1,167 @@
+.h2 {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 1px solid var(--fg);
+  padding-bottom: 5px;
+  margin-bottom: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.stat {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.statLabel {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.statVal {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.loading {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+.phase {
+  margin-bottom: 22px;
+}
+
+.phaseHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 7px;
+}
+
+.phaseLabel {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.phaseMeta {
+  font-size: 9px;
+  color: var(--muted);
+  text-align: right;
+  display: flex;
+  gap: 12px;
+}
+
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.dayCell {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.1s;
+  background: var(--bg);
+}
+
+.dayCell:hover {
+  border-color: var(--fg);
+}
+
+.dayCellNum {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.dayCellDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--bg);
+  position: absolute;
+  bottom: 3px;
+}
+
+.today {
+  border: 2px solid var(--fg) !important;
+  font-weight: bold;
+}
+
+.full {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+
+.full .dayCellDot {
+  background: var(--bg);
+}
+
+.partial {
+  background: var(--surface);
+  border-color: var(--border-d);
+}
+
+.partial .dayCellDot {
+  background: var(--fg);
+}
+
+.past {
+  background: var(--surface);
+}
+
+.legend {
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.swFull    { background: var(--fg); }
+.swPartial { background: var(--surface); border-color: var(--border-d); }
+.swPast    { background: var(--surface); }
+.swToday   { background: var(--bg); }
+
+@media (max-width: 480px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dayCell {
+    width: 28px;
+    height: 28px;
+  }
+}
