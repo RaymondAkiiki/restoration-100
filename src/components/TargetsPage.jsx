@@ -1,208 +1,259 @@
-import { useState } from 'react'
-import { PHASE_TARGETS, todayDayN, TOTAL_DAYS, phase } from '../lib/constants.js'
+import { useEffect, useState } from 'react'
+import {
+  createNextQuarter,
+  deleteQuarterGoal,
+  fetchQuarterGoals,
+  fetchQuarterReview,
+  upsertQuarterGoal,
+  upsertQuarterReview,
+} from '../lib/db.js'
+import { ARENAS, arenaLabel, fmtDate, totalDays } from '../lib/constants.js'
 import Sec from './Sec.jsx'
 import s from './TargetsPage.module.css'
 
-const STOPS = [
-  { label: 'Phase 1', desc: 'Stabilize', dates: '27 Mar → 4 May 2026', days: '1–39',   key: 1 },
-  { label: 'Phase 2', desc: 'Build',     dates: '5 May → 8 Jun 2026',  days: '40–74',  key: 2 },
-  { label: 'Phase 3', desc: 'Prove',     dates: '9 Jun → 3 Jul 2026',  days: '75–99',  key: 3 },
-  { label: 'Day 100', desc: 'Arrival',   dates: '4 Jul 2026',           days: '100',    key: 4 },
-]
+const emptyGoal = quarter => ({
+  quarter_id: quarter.id,
+  arena: 'discipline',
+  title: '',
+  target_value: '',
+  current_value: '',
+  status: 'active',
+  notes: '',
+  sort_order: 99,
+})
 
-const DAILY_SCHEDULE = [
-  { t: '6:15 AM',  a: 'Wake. No phone.' },
-  { t: '6:20 AM',  a: 'Wash, settle.' },
-  { t: '6:35 AM',  a: '10 min quiet — prayer / reflection / self-command.' },
-  { t: '6:45 AM',  a: 'Daily planning. Top 3 outcomes. Must-not-fail.' },
-  { t: '7:00 AM',  a: 'Exercise / walk / stretch.' },
-  { t: '8:00 AM',  a: 'DEEP WORK BLOCK — hardest high-value work: outreach, proposals, SOPs, financial review, system building. No reactive work.' },
-  { t: '10:00 AM', a: 'Messages, admin, follow-ups.' },
-  { t: '10:30 AM', a: 'Client operations / team coordination.' },
-  { t: '1:00 PM',  a: 'Lunch. Rest. No work.' },
-  { t: '2:00 PM',  a: 'Meetings, site work, collections, ops follow-up.' },
-  { t: '4:00 PM',  a: 'Systems / admin / SOP block.' },
-  { t: '5:00 PM',  a: 'End-of-day review. Score yourself.' },
-  { t: '8:30 PM',  a: 'Light review of tomorrow. No spiralling.' },
-  { t: '10:30 PM', a: 'Sleep. Non-negotiable.' },
-]
+const Field = ({ label, children }) => (
+  <div className={s.formRow}>
+    <span className={s.formLabel}>{label}</span>
+    {children}
+  </div>
+)
 
-const SPENDING_RULES = [
-  'Any non-essential spend above UGX 30,000 requires a pause and written justification.',
-  'Never risk a larger loss to save a small amount. (The phone incident.)',
-  'No unplanned transport decisions that increase security risk.',
-  'All discretionary spending written down same day.',
-  'Every Sunday: review the week\'s spending honestly.',
-  'Before spending ask: does this protect stability, strengthen work, or just feed impulse?',
-]
+export default function TargetsPage({ quarter, onQuarterChanged }) {
+  const [goals, setGoals] = useState([])
+  const [review, setReview] = useState(null)
+  const [draft, setDraft] = useState(emptyGoal(quarter))
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState('')
 
-const TRIGGERS = [
-  { t: 'Feeling behind',               r: 'Return to scoreboard. No comparison during workday. Ask: what is today\'s next concrete move?' },
-  { t: 'Lack of visible progress',     r: 'Track lead indicators, not just outcomes. Judge yourself by actions completed this week, not mood.' },
-  { t: 'Feeling unappreciated',        r: 'Say what you need clearly. Stop making silent sacrifice your identity.' },
-  { t: 'Low energy',                   r: 'Shorten the task. Start with 15 minutes. Move your body. Low energy is not a verdict on the day.' },
-  { t: 'Fear of failure / exposure',   r: 'Define success as sending, calling, proposing — not as being admired or immediately winning.' },
-  { t: 'Ego bruises in relationships', r: 'Ask: am I hurt, ashamed, or controlling? Speak directly before silence hardens.' },
-]
+  useEffect(() => {
+    setStatus('')
+    setDraft(emptyGoal(quarter))
+    Promise.all([
+      fetchQuarterGoals(quarter.id),
+      fetchQuarterReview(quarter),
+    ]).then(([goalRows, reviewRow]) => {
+      setGoals(goalRows)
+      setReview(reviewRow)
+    })
+  }, [quarter])
 
-const STOP_DOING = [
-  'Feeding every interesting idea that arrives.',
-  'Confusing motion with traction.',
-  'Drawing identity from future greatness.',
-  'Letting shame create escape cycles.',
-  'Consuming so much that your own signal gets weak.',
-  'Being casual with your days while speaking seriously about empire.',
-  'Allowing internal chaos to be treated as "just how I am."',
-  'Using mood as a deciding factor for whether key work gets done.',
-  'Starting tasks without defining the business outcome first.',
-  'Emotional withdrawal as punishment in close relationships.',
-]
+  function replaceGoal(next) {
+    setGoals(prev => prev.map(goal => goal.id === next.id ? next : goal))
+  }
 
-export default function TargetsPage() {
-  const tn  = todayDayN()
-  const cur = tn >= 1 && tn <= TOTAL_DAYS ? phase(tn).num : null
+  async function saveGoal(goal) {
+    setSaving(true)
+    try {
+      const saved = await upsertQuarterGoal(goal)
+      if (goal.id) replaceGoal(saved)
+      else {
+        setGoals(prev => [...prev, saved])
+        setDraft(emptyGoal(quarter))
+      }
+      setStatus('saved')
+      setTimeout(() => setStatus(''), 2200)
+    } catch (err) {
+      setStatus('error: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeGoal(goalId) {
+    setSaving(true)
+    try {
+      await deleteQuarterGoal(goalId)
+      setGoals(prev => prev.filter(goal => goal.id !== goalId))
+      setStatus('deleted')
+      setTimeout(() => setStatus(''), 2200)
+    } catch (err) {
+      setStatus('error: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveReview() {
+    setSaving(true)
+    try {
+      const saved = await upsertQuarterReview(quarter, review)
+      setReview(saved)
+      setStatus('review saved')
+      setTimeout(() => setStatus(''), 2200)
+    } catch (err) {
+      setStatus('error: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function startNextQuarter() {
+    setSaving(true)
+    try {
+      if (review) await upsertQuarterReview(quarter, review)
+      const next = await createNextQuarter(quarter, { next_theme: review?.next_theme })
+      onQuarterChanged(next)
+    } catch (err) {
+      setStatus('error: ' + err.message)
+      setSaving(false)
+    }
+  }
+
+  const goalGroups = ARENAS.map(arena => ({
+    ...arena,
+    goals: goals.filter(goal => goal.arena === arena.key),
+  }))
 
   return (
     <div>
-      <div className={s.h2}>Targets, Rules, and Non-Negotiables</div>
+      <div className={s.h2}>Quarter Goals</div>
       <div className={s.intro}>
-        This is the standard. Review it when you feel lost. Return to it when you drift.
-        It does not negotiate with your mood.
+        {quarter.label}: {fmtDate(quarter.start_date)} to {fmtDate(quarter.end_date)}.
+        {' '}Keep this lean. The point is daily accountability, not an impressive list.
       </div>
 
-      {/* Phase timeline */}
-      <div className={s.timeline}>
-        {STOPS.map(({ label, desc, dates, days, key }) => (
-          <div key={key} className={`${s.phase} ${cur === key ? s.phaseCurrent : ''}`}>
-            <div className={s.phaseDot} />
-            <div className={s.phaseContent}>
-              <div className={s.phaseLabel}>{label} — {desc}</div>
-              <div className={s.phaseDates}>{dates}</div>
-              <div className={s.phaseDays}>Days {days}</div>
-              {cur === key && <div className={s.phaseActive}>You are here</div>}
-            </div>
-          </div>
-        ))}
+      <div className={s.quarterCard}>
+        <div>
+          <div className={s.quarterTitle}>{quarter.theme || 'No theme set'}</div>
+          <div className={s.quarterMeta}>{totalDays(quarter)} days. Five arenas. One operator being built.</div>
+        </div>
       </div>
 
-      {/* Phase targets */}
-      {STOPS.map(({ label, desc, key }) => (
-        <Sec key={key} title={`${label} — ${desc} targets`} defaultOpen={cur === key}>
-          {PHASE_TARGETS[key].map((t, i) => (
-            <div key={i} className={s.targetRow}>
-              <span className={s.targetBullet}>—</span>
-              <span className={s.targetText}>{t}</span>
-            </div>
+      {goalGroups.map(group => (
+        <Sec key={group.key} title={group.label} defaultOpen={group.key === 'discipline' || group.key === 'sales'}>
+          {group.goals.length === 0 && (
+            <div className={s.empty}>No goal in this arena yet.</div>
+          )}
+
+          {group.goals.map(goal => (
+            <GoalEditor
+              key={goal.id}
+              goal={goal}
+              saving={saving}
+              onChange={next => replaceGoal(next)}
+              onSave={() => saveGoal(goal)}
+              onDelete={() => removeGoal(goal.id)}
+            />
           ))}
         </Sec>
       ))}
 
-      {/* Core business focus */}
-      <Sec title="Core Business Focus — 12 months">
-        <div className={s.focusBlock}>
-          <div className={s.focusTitle}>
-            One arena: Property management + software leverage + strong operations.
-          </div>
-          <div className={s.focusDesc}>
-            Redefine real estate in Uganda. Not a hustle business. A systems business.
-          </div>
-          <div className={s.pillars}>
+      <Sec title="Add Goal">
+        <div className={s.goalEdit}>
+          <Field label="Arena">
+            <select value={draft.arena} onChange={e => setDraft({ ...draft, arena: e.target.value })}>
+              {ARENAS.map(arena => <option key={arena.key} value={arena.key}>{arena.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Goal">
+            <input type="text" value={draft.title}
+              placeholder="Example: Contact 20 landlords each week"
+              onChange={e => setDraft({ ...draft, title: e.target.value })} />
+          </Field>
+          <Field label="Target">
+            <input type="text" value={draft.target_value}
+              placeholder="Example: 20 contacts/week"
+              onChange={e => setDraft({ ...draft, target_value: e.target.value })} />
+          </Field>
+          <button className="inv" disabled={saving || !draft.title.trim()} onClick={() => saveGoal(draft)}>
+            Add Goal
+          </button>
+        </div>
+      </Sec>
+
+      {review && (
+        <Sec title="Quarter Review & Rollover">
+          <div className={s.reviewGrid}>
             {[
-              { p: 'A', label: 'Commercial Growth',      desc: 'Get more landlords, more units, more revenue.' },
-              { p: 'B', label: 'Operational Excellence', desc: 'Run properties better with visible standards and proof.' },
-              { p: 'C', label: 'Internal Systems',       desc: 'Document and standardise the business.' },
-              { p: 'D', label: 'Software Leverage',      desc: 'Build only tools that improve A, B, and C.' },
-            ].map(({ p, label, desc }) => (
-              <div key={p} className={s.pillar}>
-                <div className={s.pillarLetter}>{p}</div>
-                <div>
-                  <div className={s.pillarLabel}>{label}</div>
-                  <div className={s.pillarDesc}>{desc}</div>
-                </div>
-              </div>
+              ['wins', 'Wins achieved'],
+              ['misses', 'Goals missed'],
+              ['patterns', 'Pattern that kept showing up'],
+              ['lessons', 'Lessons to carry forward'],
+              ['rollover', 'What should roll into next quarter'],
+              ['next_theme', 'Next quarter theme'],
+            ].map(([key, label]) => (
+              <Field key={key} label={label}>
+                <textarea rows={key === 'next_theme' ? 2 : 3}
+                  value={review[key] ?? ''}
+                  onChange={e => setReview({ ...review, [key]: e.target.value })} />
+              </Field>
             ))}
           </div>
-        </div>
-      </Sec>
-
-      {/* Daily schedule */}
-      <Sec title="Daily Schedule — non-negotiable structure">
-        <div className={s.schedHint}>
-          This structure does not negotiate with your moods.
-        </div>
-        {DAILY_SCHEDULE.map(({ t, a }) => (
-          <div key={t} className={s.schedRow}>
-            <span className={s.schedTime}>{t}</span>
-            <span className={s.schedAct}>{a}</span>
+          <div className={s.actionRow}>
+            <button onClick={saveReview} disabled={saving}>Save Review</button>
+            <button className="inv" onClick={startNextQuarter} disabled={saving}>
+              Start Next Quarter
+            </button>
           </div>
-        ))}
-      </Sec>
+        </Sec>
+      )}
 
-      {/* Spending rules */}
-      <Sec title="Spending Rules">
-        {SPENDING_RULES.map((r, i) => (
-          <div key={i} className={s.targetRow}>
-            <span className={s.targetBullet}>—</span>
-            <span className={s.targetText}>{r}</span>
-          </div>
-        ))}
-      </Sec>
-
-      {/* Triggers */}
-      <Sec title="Known Triggers and Responses">
-        <div className={s.schedHint}>
-          Know your patterns before they hit. Choose the response in advance.
-        </div>
-        {TRIGGERS.map(({ t, r }) => (
-          <div key={t} className={s.triggerRow}>
-            <div className={s.triggerLabel}>{t}</div>
-            <div className={s.triggerResponse}>{r}</div>
-          </div>
-        ))}
-      </Sec>
-
-      {/* Stop doing */}
-      <Sec title="Stop Doing — this season">
-        {STOP_DOING.map((item, i) => (
-          <div key={i} className={s.targetRow}>
-            <span className={s.targetBullet}>—</span>
+      <Sec title="Daily Standard">
+        {[
+          'Morning: choose three outcomes that move quarter goals.',
+          'Daytime: protect deep work and complete one revenue or sales action.',
+          'Evening: score honestly, name the leak, choose tomorrow first move.',
+          'Weekly: review evidence, not mood.',
+        ].map(item => (
+          <div key={item} className={s.targetRow}>
+            <span className={s.targetBullet}>-</span>
             <span className={s.targetText}>{item}</span>
           </div>
         ))}
       </Sec>
 
-      {/* Emotional adulthood rules */}
-      <Sec title="Emotional Adulthood — the five rules">
-        {[
-          { r: '1', l: 'Feel, then govern.', d: 'Do not deny feelings. But feelings do not get final authority. Say: "I feel this. I am not required to obey it."' },
-          { r: '2', l: 'Replace reaction with named response.', d: 'Ask: What am I feeling? What story am I telling? What is actually true? What action is mature here?' },
-          { r: '3', l: 'End silent punishment.', d: 'Any time you withdraw to make someone feel something, that is manipulation. Catch it early. Name what you actually need.' },
-          { r: '4', l: 'Build recovery rituals.', d: 'When triggered: breathe 60 seconds. No texting while activated. Write what happened. Identify the wound. Choose direct speech.' },
-          { r: '5', l: 'Stop worshipping pride.', d: 'Some of "I like what I like" is not authenticity. Some of it is undeveloped ego. Kill what is childish even if it feels familiar.' },
-        ].map(({ r, l, d }) => (
-          <div key={r} className={s.ruleRow}>
-            <div className={s.ruleNum}>{r}</div>
-            <div>
-              <div className={s.ruleLabel}>{l}</div>
-              <div className={s.ruleDesc}>{d}</div>
-            </div>
-          </div>
-        ))}
-      </Sec>
+      <div className={s.statusLine}>
+        {saving && 'Saving...'}
+        {!saving && status && status}
+      </div>
+    </div>
+  )
+}
 
-      {/* The hard truth */}
-      <div className={s.truth}>
-        <div className={s.truthTitle}>The standard you must hold yourself to</div>
-        <div className={s.truthBody}>
-          Reliable men become exceptional.<br />
-          Unreliable men just keep imagining it.<br /><br />
-          Work is what survives contact with measurement.<br />
-          Revenue created. Clients closed. Product shipped. SOP finished.<br />
-          Follow-ups sent. Expenses tracked. Tenants resolved. Team trained.<br /><br />
-          Your biggest enemy is not lack of opportunity.<br />
-          It is the gap between what you know and what you repeatedly do.<br />
-          That gap is where dreams go to die.
+function GoalEditor({ goal, saving, onChange, onSave, onDelete }) {
+  return (
+    <div className={s.goalEdit}>
+      <div className={s.goalTop}>
+        <div>
+          <div className={s.goalArena}>{arenaLabel(goal.arena)}</div>
+          <input type="text" value={goal.title}
+            onChange={e => onChange({ ...goal, title: e.target.value })} />
         </div>
+        <select value={goal.status} onChange={e => onChange({ ...goal, status: e.target.value })}>
+          <option value="active">Active</option>
+          <option value="achieved">Achieved</option>
+          <option value="paused">Paused</option>
+          <option value="dropped">Dropped</option>
+        </select>
+      </div>
+      <div className={s.goalTwo}>
+        <Field label="Target">
+          <input type="text" value={goal.target_value ?? ''}
+            onChange={e => onChange({ ...goal, target_value: e.target.value })} />
+        </Field>
+        <Field label="Current">
+          <input type="text" value={goal.current_value ?? ''}
+            onChange={e => onChange({ ...goal, current_value: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Notes">
+        <textarea rows={2} value={goal.notes ?? ''}
+          onChange={e => onChange({ ...goal, notes: e.target.value })} />
+      </Field>
+      <div className={s.actionRow}>
+        <button className="inv" disabled={saving || !goal.title.trim()} onClick={onSave}>Save Goal</button>
+        <button disabled={saving} onClick={onDelete}>Delete</button>
       </div>
     </div>
   )

@@ -1,27 +1,33 @@
 import { useState, useEffect } from 'react'
 import { fetchAllDaysSummary } from '../lib/db.js'
 import {
-  TOTAL_DAYS, todayDayN, dayDate, fmtShort, phase, dayChecks, dayScore,
+  dayChecks, dayDate, dayScore, fmtShort, quarterPhase, todayDayN, totalDays,
 } from '../lib/constants.js'
 import s from './CalPage.module.css'
 
-const PHASES = [
-  { label: 'Phase 1 — Stabilize', a: 1,  b: 39,  target: '4 May 2026' },
-  { label: 'Phase 2 — Build',     a: 40, b: 74,  target: '8 Jun 2026' },
-  { label: 'Phase 3 — Prove',     a: 75, b: 99,  target: '3 Jul 2026' },
-  { label: 'Day 100 — Arrival',   a: 100, b: 100, target: '4 Jul 2026 — Birthday' },
-]
+function segmentsForQuarter(quarter) {
+  const days = totalDays(quarter)
+  const one = Math.ceil(days / 3)
+  const two = Math.ceil((days * 2) / 3)
+  return [
+    { label: 'Month 1 - Stabilize', a: 1, b: one },
+    { label: 'Month 2 - Build', a: one + 1, b: two },
+    { label: 'Month 3 - Prove', a: two + 1, b: days },
+  ]
+}
 
-export default function CalPage({ onSelect }) {
+export default function CalPage({ quarter, onSelect }) {
   const [summary, setSummary] = useState([])
   const [loading, setLoading] = useState(true)
-  const tn = todayDayN()
+  const tn = todayDayN(quarter)
+  const daysTotal = totalDays(quarter)
 
   useEffect(() => {
-    fetchAllDaysSummary()
+    setLoading(true)
+    fetchAllDaysSummary(quarter.id)
       .then(rows => { setSummary(rows); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }, [quarter.id])
 
   const byDay = {}
   summary.forEach(r => { byDay[r.day_number] = r })
@@ -30,15 +36,14 @@ export default function CalPage({ onSelect }) {
 
   return (
     <div>
-      <div className={s.h2}>100-Day Overview</div>
+      <div className={s.h2}>Quarter Overview</div>
 
-      {/* top stats */}
       <div className={s.stats}>
         {[
           { l: 'Days completed', v: totalDone },
-          { l: 'Days entered',   v: summary.length },
-          { l: 'Days remaining', v: Math.max(0, TOTAL_DAYS - Math.max(0, tn - 1)) },
-          { l: 'Today',          v: tn >= 1 && tn <= TOTAL_DAYS ? `Day ${tn}` : tn < 1 ? 'Not started' : 'Complete' },
+          { l: 'Days entered', v: summary.length },
+          { l: 'Days remaining', v: Math.max(0, daysTotal - Math.max(0, tn - 1)) },
+          { l: 'Today', v: tn >= 1 && tn <= daysTotal ? `Day ${tn}` : tn < 1 ? 'Not started' : 'Complete' },
         ].map(({ l, v }) => (
           <div key={l} className={s.stat}>
             <div className={s.statLabel}>{l}</div>
@@ -49,17 +54,21 @@ export default function CalPage({ onSelect }) {
 
       {loading && <div className={s.loading}>Loading...</div>}
 
-      {PHASES.map(({ label, a, b, target }) => {
-        const days     = Array.from({ length: b - a + 1 }, (_, i) => a + i)
+      {segmentsForQuarter(quarter).map(({ label, a, b }) => {
+        const days = Array.from({ length: b - a + 1 }, (_, i) => a + i)
         const pastDays = days.filter(n => n < tn)
-        const done     = pastDays.filter(n => dayChecks(byDay[n] || {}) >= 3).length
+        const done = pastDays.filter(n => dayChecks(byDay[n] || {}) >= 3).length
+        const endDate = fmtShort(dayDate(quarter, b))
+        const current = tn >= a && tn <= b
 
         return (
           <div key={label} className={s.phase}>
             <div className={s.phaseHead}>
-              <div className={s.phaseLabel}>{label}</div>
+              <div className={s.phaseLabel}>
+                {label}{current ? ` - ${quarterPhase(quarter, tn).desc}` : ''}
+              </div>
               <div className={s.phaseMeta}>
-                <span>Ends {target}</span>
+                <span>Ends {endDate}</span>
                 {pastDays.length > 0 && (
                   <span>{done}/{pastDays.length} days done</span>
                 )}
@@ -67,27 +76,26 @@ export default function CalPage({ onSelect }) {
             </div>
             <div className={s.grid}>
               {days.map(n => {
-                const info    = byDay[n] || {}
+                const info = byDay[n] || {}
                 const isToday = n === tn
-                const past    = n < tn
-                const chk     = dayChecks(info)
-                const score   = dayScore(info)
-                const full    = past && chk >= 3
+                const past = n < tn
+                const chk = dayChecks(info)
+                const score = dayScore(info)
+                const full = past && chk >= 3
                 const partial = past && chk > 0 && chk < 3
-                const empty   = past && chk === 0 && summary.some(r => r.day_number === n) === false && n < tn
 
                 let cls = s.dayCell
-                if (isToday)  cls += ' ' + s.today
-                if (full)     cls += ' ' + s.full
+                if (isToday) cls += ' ' + s.today
+                if (full) cls += ' ' + s.full
                 else if (partial) cls += ' ' + s.partial
-                else if (past)    cls += ' ' + s.past
+                else if (past) cls += ' ' + s.past
 
                 return (
                   <div
                     key={n}
                     className={cls}
                     onClick={() => onSelect(n)}
-                    title={`Day ${n} — ${fmtShort(dayDate(n))}${past ? ` | ${chk}/6 checks, ${score}/25` : ''}`}
+                    title={`Day ${n} - ${fmtShort(dayDate(quarter, n))}${past ? ` | ${chk}/6 checks, ${score}/25` : ''}`}
                   >
                     <span className={s.dayCellNum}>{n}</span>
                     {past && chk > 0 && (

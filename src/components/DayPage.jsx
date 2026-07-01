@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { fetchDay, upsertDay } from '../lib/db.js'
+import { fetchDay, fetchQuarterGoals, upsertDay } from '../lib/db.js'
 import {
-  CHECKS, SCORE_ITEMS, phase, fmtDate, dayDate,
-  dayScore, dayChecks, blankDay, todayDayN,
+  CHECKS, SCORE_ITEMS, arenaLabel, blankDay, dayChecks, dayDate,
+  dayScore, fmtDate, quarterPhase, todayDayN,
 } from '../lib/constants.js'
 import Sec from './Sec.jsx'
 import s from './DayPage.module.css'
@@ -23,24 +23,35 @@ const FieldRow = ({ label, value, onChange, disabled, multiline, placeholder }) 
   </div>
 )
 
-export default function DayPage({ n, role, onBack }) {
-  const [day,    setDay]    = useState(null)
-  const [loading,setLoading]= useState(true)
+export default function DayPage({ quarter, n, role, onBack }) {
+  const [day, setDay] = useState(null)
+  const [goals, setGoals] = useState([])
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
-  const [dirty,  setDirty]  = useState(false)
+  const [dirty, setDirty] = useState(false)
 
   const own = role === 'owner'
-  const ph  = phase(n)
+  const ph = quarterPhase(quarter, n)
 
   useEffect(() => {
     setLoading(true)
     setDirty(false)
     setStatus('')
-    fetchDay(n)
-      .then(d  => { setDay(d); setLoading(false) })
-      .catch(() => { setDay(blankDay(n)); setLoading(false) })
-  }, [n])
+    Promise.all([
+      fetchDay(quarter, n),
+      fetchQuarterGoals(quarter.id),
+    ])
+      .then(([d, g]) => {
+        setDay(d)
+        setGoals(g.filter(goal => goal.status === 'active' || goal.status === 'achieved'))
+        setLoading(false)
+      })
+      .catch(() => {
+        setDay(blankDay(quarter, n))
+        setLoading(false)
+      })
+  }, [quarter, n])
 
   function patch(fn) {
     setDay(prev => { const next = { ...prev }; fn(next); return next })
@@ -51,7 +62,7 @@ export default function DayPage({ n, role, onBack }) {
   async function save() {
     setSaving(true)
     try {
-      const saved = await upsertDay(day)
+      const saved = await upsertDay(quarter, day)
       setDay(saved)
       setDirty(false)
       setStatus('saved')
@@ -64,24 +75,24 @@ export default function DayPage({ n, role, onBack }) {
   }
 
   if (loading) return <div className={s.loading}>Loading day {n}...</div>
-  if (!day)    return <div className={s.loading}>Could not load day {n}.</div>
+  if (!day) return <div className={s.loading}>Could not load day {n}.</div>
 
-  const score   = dayScore(day)
-  const checks  = dayChecks(day)
-  const isToday = n === todayDayN()
+  const score = dayScore(day)
+  const checks = dayChecks(day)
+  const isToday = n === todayDayN(quarter)
 
   return (
     <div>
       {onBack && (
         <button className="sm" style={{ marginBottom: 13 }} onClick={onBack}>
-          left Calendar
+          Back to Quarter
         </button>
       )}
 
       <div className={s.dayHeader}>
         <div>
           <div className={s.dayNum}>Day {n}</div>
-          <div className={s.dayDate}>{fmtDate(dayDate(n))}</div>
+          <div className={s.dayDate}>{fmtDate(dayDate(quarter, n))}</div>
           <div className={s.phaseName}>{ph.name}</div>
           <div className={s.phaseDesc}>{ph.desc}</div>
           {isToday && <div className={s.todayBadge}>Today</div>}
@@ -94,25 +105,40 @@ export default function DayPage({ n, role, onBack }) {
         </div>
       </div>
 
-      <Sec title="Morning Plan — complete before 7:00 AM" defaultOpen={isToday}>
-        <div className={s.hint}>Three outcomes max. Write them and commit.</div>
+      <Sec title="Morning Plan" defaultOpen={isToday}>
+        <div className={s.hint}>Three outcomes max. Each one should move the quarter, not just fill the day.</div>
         {[0, 1, 2].map(i => (
           <div key={i} className={s.fieldRow}>
             <LBL>Outcome {i + 1}</LBL>
-            <input type="text" disabled={!own}
-              placeholder={`${i + 1}.`}
-              value={day.top3?.[i] ?? ''}
-              onChange={e => patch(d => {
-                d.top3 = [...(d.top3 || ['', '', ''])]
-                d.top3[i] = e.target.value
-              })} />
+            <div className={s.outcomeStack}>
+              <input type="text" disabled={!own}
+                placeholder={`${i + 1}.`}
+                value={day.top3?.[i] ?? ''}
+                onChange={e => patch(d => {
+                  d.top3 = [...(d.top3 || ['', '', ''])]
+                  d.top3[i] = e.target.value
+                })} />
+              <select disabled={!own}
+                value={day.top3_goal_ids?.[i] ?? ''}
+                onChange={e => patch(d => {
+                  d.top3_goal_ids = [...(d.top3_goal_ids || ['', '', ''])]
+                  d.top3_goal_ids[i] = e.target.value
+                })}>
+                <option value="">No linked goal</option>
+                {goals.map(goal => (
+                  <option key={goal.id} value={String(goal.id)}>
+                    {arenaLabel(goal.arena)} - {goal.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         ))}
         <FieldRow label="Must-not-fail commitment" value={day.must_not_fail ?? ''} disabled={!own}
           placeholder="The one thing that absolutely must happen today"
           onChange={v => patch(d => { d.must_not_fail = v })} />
         <FieldRow label="Likely distraction or weakness today" value={day.distraction ?? ''} disabled={!own}
-          placeholder="Name it now. Low energy? Outreach avoidance? Resentment?"
+          placeholder="Name the leak before it starts"
           onChange={v => patch(d => { d.distraction = v })} />
       </Sec>
 
@@ -130,8 +156,8 @@ export default function DayPage({ n, role, onBack }) {
         ))}
       </Sec>
 
-      <Sec title="Daily Score — do not lie to yourself" badge={`${score} / 25`} defaultOpen={isToday}>
-        <div className={s.hint}>Rate 1-5. 5 = fully delivered. 1 = failed completely.</div>
+      <Sec title="Daily Score" badge={`${score} / 25`} defaultOpen={isToday}>
+        <div className={s.hint}>Rate 1-5. The question is simple: did your behavior match your ambition?</div>
         {SCORE_ITEMS.map(si => {
           const val = day.scores?.[si.key] ?? 0
           return (
@@ -155,22 +181,17 @@ export default function DayPage({ n, role, onBack }) {
             </div>
           )
         })}
-        <div className={s.scoreSummary}>
-          Total: {score}/25
-          {score >= 20 && ' - Strong day.'}
-          {score >= 15 && score < 20 && ' - Decent. Push harder tomorrow.'}
-          {score >= 10 && score < 15 && ' - Below standard. Be honest about why.'}
-          {score > 0 && score < 10 && ' - Poor. Name what broke down.'}
-          {score === 0 && ' - Not scored yet.'}
-        </div>
       </Sec>
 
       <Sec title="End-of-Day Review">
-        <FieldRow label="What did I avoid today?" value={day.avoided ?? ''} disabled={!own}
-          multiline placeholder="Be specific. Not just outreach - which call? Which task? Why?"
+        <FieldRow label="Did I do what I said?" value={day.avoided ?? ''} disabled={!own}
+          multiline placeholder="Where did I keep or break my word?"
           onChange={v => patch(d => { d.avoided = v })} />
+        <FieldRow label="What moved today?" value={day.moved ?? ''} disabled={!own}
+          multiline placeholder="Revenue, sales, body, emotional recovery, relationship repair, or discipline evidence."
+          onChange={v => patch(d => { d.moved = v })} />
         <FieldRow label="What moves first tomorrow?" value={day.tomorrow ?? ''} disabled={!own}
-          placeholder="Name the first action. Not a category. A real task."
+          placeholder="Name the first concrete action."
           onChange={v => patch(d => { d.tomorrow = v })} />
       </Sec>
 
@@ -182,7 +203,7 @@ export default function DayPage({ n, role, onBack }) {
           value={day.partner_note ?? ''}
           disabled={role !== 'partner'}
           multiline
-          placeholder="Partner: your honest observation. Does the evidence match the stated ambition?"
+          placeholder="Partner: does the evidence match the stated ambition?"
           onChange={v => patch(d => { d.partner_note = v })} />
       </Sec>
 
@@ -191,9 +212,9 @@ export default function DayPage({ n, role, onBack }) {
           {saving ? 'Saving...' : 'Save to Supabase'}
         </button>
         {!dirty && !saving && <span className={s.saveHint}>No unsaved changes</span>}
-        {dirty  && !saving && <span className={s.saveHint}>Unsaved changes</span>}
-        {status === 'saved'           && <span className={s.saveOk}>Saved to database.</span>}
-        {status.startsWith('error')   && <span className={s.saveErr}>{status}</span>}
+        {dirty && !saving && <span className={s.saveHint}>Unsaved changes</span>}
+        {status === 'saved' && <span className={s.saveOk}>Saved to database.</span>}
+        {status.startsWith('error') && <span className={s.saveErr}>{status}</span>}
       </div>
     </div>
   )

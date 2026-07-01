@@ -1,28 +1,30 @@
-import { todayDayN, TOTAL_DAYS, phase, fmtDate, dayDate } from '../lib/constants.js'
+import { fmtDate, dayDate, quarterPhase, todayDayN, totalDays } from '../lib/constants.js'
 import s from './Nav.module.css'
 
-export default function Nav({ view, setView, role, setRole, stats }) {
-  const tn    = todayDayN()
-  const inChallenge = tn >= 1 && tn <= TOTAL_DAYS
-  const ph    = inChallenge ? phase(tn) : null
-  const pct   = inChallenge ? Math.round((tn / TOTAL_DAYS) * 100) : (tn > TOTAL_DAYS ? 100 : 0)
-  const done  = stats?.completed ?? 0
+export default function Nav({ view, setView, role, setRole, stats, quarter }) {
+  const tn = todayDayN(quarter)
+  const days = totalDays(quarter)
+  const inQuarter = tn >= 1 && tn <= days
+  const ph = inQuarter ? quarterPhase(quarter, tn) : null
+  const pct = inQuarter ? Math.round((tn / days) * 100) : (tn > days ? 100 : 0)
+  const done = stats?.completed ?? 0
+  const elapsed = Math.max(1, Math.min(tn || 1, days))
 
   return (
     <header className={s.header}>
       <div className={s.top}>
         <div>
-          <div className={s.title}>100-Day Restoration</div>
+          <div className={s.title}>Quarterly Restoration</div>
           <div className={s.sub}>
-            {tn < 1
-              ? 'Starts 27 March 2026'
-              : tn > TOTAL_DAYS
-              ? 'Challenge complete — 4 Jul 2026'
-              : `Day ${tn} of ${TOTAL_DAYS} — ${ph?.name}`}
+            {quarter.label} - {quarter.theme || 'Build the operator, then build the outcomes.'}
           </div>
-          {inChallenge && (
-            <div className={s.sub2}>{fmtDate(dayDate(tn))}</div>
-          )}
+          <div className={s.sub2}>
+            {tn < 1
+              ? `Starts ${fmtDate(quarter.start_date)}`
+              : tn > days
+              ? `Quarter complete - ended ${fmtDate(quarter.end_date)}`
+              : `Day ${tn} of ${days} - ${ph?.name} - ${fmtDate(dayDate(quarter, tn))}`}
+          </div>
         </div>
         <div className={s.roleWrap}>
           <div className={s.roleLabel}>View</div>
@@ -39,25 +41,25 @@ export default function Nav({ view, setView, role, setRole, stats }) {
         </div>
       </div>
 
-      {(inChallenge || tn > TOTAL_DAYS) && (
+      {(inQuarter || tn > days) && (
         <div className={s.progress}>
           <div className={s.bar}>
             <div className={s.fill} style={{ width: `${pct}%` }} />
           </div>
           <div className={s.barMeta}>
-            <span>{done} days completed ({Math.round((done / Math.max(1, Math.min(tn, TOTAL_DAYS))) * 100)}%)</span>
-            <span>avg score {stats?.avgScore ?? '—'}/25</span>
-            <span>{Math.max(0, TOTAL_DAYS - tn)} days remaining</span>
+            <span>{done} days completed ({Math.round((done / elapsed) * 100)}%)</span>
+            <span>avg score {stats?.avgScore ?? '-'}/25</span>
+            <span>{Math.max(0, days - Math.max(0, tn))} days remaining</span>
           </div>
         </div>
       )}
 
       <nav className={s.nav}>
         {[
-          ['today',    'Today'],
-          ['calendar', 'Calendar'],
-          ['weekly',   'Weekly'],
-          ['targets',  'Targets'],
+          ['today', 'Today'],
+          ['calendar', 'Quarter'],
+          ['weekly', 'Weekly'],
+          ['targets', 'Goals'],
         ].map(([v, l]) => (
           <button
             key={v}

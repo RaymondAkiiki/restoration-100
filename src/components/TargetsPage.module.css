@@ -15,6 +15,93 @@
   line-height: 1.6;
 }
 
+.quarterCard {
+  border: 1px solid var(--fg);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.quarterTitle {
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.quarterMeta {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.empty {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 0;
+}
+
+.goalEdit {
+  border: 1px solid var(--border);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.goalEdit:last-child {
+  margin-bottom: 0;
+}
+
+.goalTop {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 8px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.goalArena {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 3px;
+}
+
+.goalTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.formRow {
+  margin-bottom: 8px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 9px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  margin-bottom: 3px;
+}
+
+.reviewGrid {
+  display: grid;
+  gap: 4px;
+}
+
+.actionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.statusLine {
+  min-height: 18px;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 10px;
+}
+
 .timeline {
   display: flex;
   flex-direction: column;
@@ -252,4 +339,11 @@
   font-size: 12px;
   line-height: 1.9;
   color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .goalTop,
+  .goalTwo {
+    grid-template-columns: 1fr;
+  }
 }

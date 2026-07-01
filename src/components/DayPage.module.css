@@ -82,6 +82,11 @@
   margin-bottom: 11px;
 }
 
+.outcomeStack {
+  display: grid;
+  gap: 6px;
+}
+
 .lbl {
   display: block;
   font-size: 10px;

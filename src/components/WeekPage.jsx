@@ -1,31 +1,31 @@
 import { useState, useEffect } from 'react'
-import { fetchWeek, upsertWeek, fetchAllWeeks } from '../lib/db.js'
-import { BIZ_FIELDS, TOTAL_DAYS, todayDayN, weekForDay, blankWeek } from '../lib/constants.js'
+import { fetchAllWeeks, fetchWeek, upsertWeek } from '../lib/db.js'
+import { BIZ_FIELDS, fmtShort, dayDate, todayDayN, totalDays, weekForDay, weekRange } from '../lib/constants.js'
 import Sec from './Sec.jsx'
 import s from './WeekPage.module.css'
 
-const TOTAL_WEEKS = Math.ceil(TOTAL_DAYS / 7)
-
-export default function WeekPage({ role }) {
-  const tn    = Math.max(1, Math.min(TOTAL_DAYS, todayDayN() || 1))
-  const [w,    setW]    = useState(weekForDay(tn))
+export default function WeekPage({ quarter, role }) {
+  const days = totalDays(quarter)
+  const totalWeeks = Math.ceil(days / 7)
+  const tn = Math.max(1, Math.min(days, todayDayN(quarter) || 1))
+  const [w, setW] = useState(weekForDay(tn))
   const [week, setWeek] = useState(null)
   const [allW, setAllW] = useState([])
-  const [saving,  setSaving]  = useState(false)
-  const [status,  setStatus]  = useState('')
-  const [dirty,   setDirty]   = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState('')
+  const [dirty, setDirty] = useState(false)
 
   const own = role === 'owner'
 
   useEffect(() => {
-    fetchAllWeeks().then(rows => setAllW(rows))
-  }, [])
+    fetchAllWeeks(quarter.id).then(rows => setAllW(rows))
+  }, [quarter.id])
 
   useEffect(() => {
     setDirty(false)
     setStatus('')
-    fetchWeek(w).then(d => setWeek(d))
-  }, [w])
+    fetchWeek(quarter, w).then(d => setWeek(d))
+  }, [quarter, w])
 
   function patch(fn) {
     setWeek(prev => { const next = { ...prev }; fn(next); return next })
@@ -36,7 +36,7 @@ export default function WeekPage({ role }) {
   async function save() {
     setSaving(true)
     try {
-      const saved = await upsertWeek(week)
+      const saved = await upsertWeek(quarter, week)
       setWeek(saved)
       setAllW(prev => {
         const idx = prev.findIndex(x => x.week_number === saved.week_number)
@@ -53,28 +53,27 @@ export default function WeekPage({ role }) {
     }
   }
 
-  const sa = (w - 1) * 7 + 1
-  const ea = Math.min(w * 7, TOTAL_DAYS)
-
-  // chart data for biz metric across weeks
+  const { startDay, endDay } = weekRange(quarter, w)
   const filledWeeks = allW.filter(x => x.biz_metrics?.revenue)
 
   return (
     <div>
-      {/* week selector */}
       <div className={s.weekNav}>
         <button className="sm" onClick={() => setW(v => Math.max(1, v - 1))} disabled={w <= 1}>Prev</button>
         <div className={s.weekTitle}>
           <span>Week {w}</span>
-          <span className={s.weekRange}>Days {sa}–{ea}</span>
+          <span className={s.weekRange}>
+            Days {startDay}-{endDay} / {fmtShort(dayDate(quarter, startDay))}-{fmtShort(dayDate(quarter, endDay))}
+          </span>
         </div>
-        <button className="sm" onClick={() => setW(v => Math.min(TOTAL_WEEKS, v + 1))} disabled={w >= TOTAL_WEEKS}>Next</button>
+        <button className="sm" onClick={() => setW(v => Math.min(totalWeeks, v + 1))} disabled={w >= totalWeeks}>Next</button>
       </div>
 
-      {/* mini week picker */}
       <div className={s.weekPicker}>
-        {Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map(wn => {
-          const entered = allW.some(x => x.week_number === wn && x.biz_metrics?.revenue)
+        {Array.from({ length: totalWeeks }, (_, i) => i + 1).map(wn => {
+          const entered = allW.some(x => x.week_number === wn && (
+            x.biz_metrics?.revenue || x.biz_metrics?.contacts || x.kept_word || x.broke_word
+          ))
           return (
             <button key={wn} className={`sm ${w === wn ? 'inv' : ''}`}
               style={{ width: 34, padding: '4px 0', position: 'relative' }}
@@ -93,7 +92,7 @@ export default function WeekPage({ role }) {
 
       {week && (
         <>
-          <Sec title="Business Numbers — fill every row. Blank is a lie." defaultOpen>
+          <Sec title="Weekly Scoreboard" defaultOpen>
             <div className={s.bizGrid}>
               {BIZ_FIELDS.map(({ key, label }) => (
                 <div key={key} className={s.bizRow}>
@@ -108,11 +107,21 @@ export default function WeekPage({ role }) {
             </div>
           </Sec>
 
-          <Sec title="Personal Leadership Review">
+          <Sec title="Weekly Accountability Review">
+            <div className={s.fieldRow}>
+              <span className={s.lbl}>Where did I keep my word this week?</span>
+              <textarea rows={3} disabled={!own} value={week.kept_word ?? ''}
+                onChange={e => patch(d => { d.kept_word = e.target.value })} />
+            </div>
             <div className={s.fieldRow}>
               <span className={s.lbl}>Where did I break my word this week?</span>
               <textarea rows={3} disabled={!own} value={week.broke_word ?? ''}
                 onChange={e => patch(d => { d.broke_word = e.target.value })} />
+            </div>
+            <div className={s.fieldRow}>
+              <span className={s.lbl}>Which quarterly goal moved?</span>
+              <textarea rows={2} disabled={!own} value={week.goal_progress ?? ''}
+                onChange={e => patch(d => { d.goal_progress = e.target.value })} />
             </div>
             <div className={s.fieldRow}>
               <span className={s.lbl}>What pattern showed up again?</span>
@@ -120,13 +129,13 @@ export default function WeekPage({ role }) {
                 onChange={e => patch(d => { d.pattern = e.target.value })} />
             </div>
             <div className={s.fieldRow}>
-              <span className={s.lbl}>Money note — wasteful spend or rule broken?</span>
+              <span className={s.lbl}>Money note</span>
               <textarea rows={2} disabled={!own} value={week.money_note ?? ''}
                 onChange={e => patch(d => { d.money_note = e.target.value })} />
             </div>
           </Sec>
 
-          <Sec title="Next Week — Top 3 Priorities">
+          <Sec title="Next Week - Top 3 Priorities">
             {[0, 1, 2].map(i => (
               <div key={i} className={s.fieldRow}>
                 <span className={s.lbl}>Priority {i + 1}</span>
@@ -146,18 +155,17 @@ export default function WeekPage({ role }) {
                 {saving ? 'Saving...' : 'Save'}
               </button>
               {!dirty && !saving && <span className={s.hint}>No unsaved changes</span>}
-              {dirty  && !saving && <span className={s.hint}>Unsaved changes</span>}
-              {status === 'saved'        && <span className={s.ok}>Saved.</span>}
-              {status.startsWith('error')&& <span className={s.err}>{status}</span>}
+              {dirty && !saving && <span className={s.hint}>Unsaved changes</span>}
+              {status === 'saved' && <span className={s.ok}>Saved.</span>}
+              {status.startsWith('error') && <span className={s.err}>{status}</span>}
             </div>
           )}
         </>
       )}
 
-      {/* historical revenue trend */}
       {filledWeeks.length > 1 && (
         <div className={s.trend}>
-          <div className={s.trendTitle}>Revenue Trend (weeks with data)</div>
+          <div className={s.trendTitle}>Revenue Trend</div>
           <div className={s.trendBars}>
             {filledWeeks.map(wk => {
               const raw = wk.biz_metrics?.revenue ?? ''
@@ -174,7 +182,7 @@ export default function WeekPage({ role }) {
               )
             })}
           </div>
-          <div className={s.trendNote}>Bar height relative to 10,000,000 UGX. Adjust scale as needed.</div>
+          <div className={s.trendNote}>Bar height relative to 10,000,000 UGX.</div>
         </div>
       )}
     </div>
