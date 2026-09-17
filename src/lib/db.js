@@ -8,6 +8,7 @@ import {
   dayDate,
   isoDate,
   parseDate,
+  weekRange,
 } from './constants.js'
 
 export async function fetchActiveQuarter() {
@@ -83,14 +84,14 @@ export async function archiveQuarter(quarterId) {
 
 export async function createNextQuarter(current, options = {}) {
   const start = parseDate(current.end_date)
-  start.setDate(start.getDate() + 1)
+  start.setUTCDate(start.getUTCDate() + 1)
   const end = new Date(start)
-  end.setMonth(end.getMonth() + 3)
-  end.setDate(end.getDate() - 1)
+  end.setUTCMonth(end.getUTCMonth() + 3)
+  end.setUTCDate(end.getUTCDate() - 1)
 
-  const quarterNumber = Math.floor(start.getMonth() / 3) + 1
+  const quarterNumber = Math.floor(start.getUTCMonth() / 3) + 1
   const payload = {
-    label: options.label || `${start.getFullYear()} Q${quarterNumber}`,
+    label: options.label || `${start.getUTCFullYear()} Q${quarterNumber}`,
     theme: options.theme || options.next_theme || '',
     start_date: isoDate(start),
     end_date: isoDate(end),
@@ -98,7 +99,32 @@ export async function createNextQuarter(current, options = {}) {
   }
 
   await archiveQuarter(current.id)
-  return createQuarter(payload, true)
+  const newQuarter = await createQuarter(payload, false)
+
+  if (options.rolloverGoalIds && options.rolloverGoalIds.length > 0) {
+    const { data: goalsToRoll } = await supabase
+      .from('quarter_goals')
+      .select('*')
+      .in('id', options.rolloverGoalIds)
+
+    if (goalsToRoll && goalsToRoll.length > 0) {
+      const rows = goalsToRoll.map((g, idx) => ({
+        quarter_id: newQuarter.id,
+        arena: g.arena,
+        title: g.title,
+        target_value: g.target_value,
+        current_value: '',
+        status: 'active',
+        notes: g.notes ? `Rolled over: ${g.notes}` : 'Rolled over',
+        sort_order: idx,
+      }))
+      await supabase.from('quarter_goals').insert(rows)
+    }
+  } else {
+    await seedDefaultGoals(newQuarter.id)
+  }
+
+  return newQuarter
 }
 
 async function seedDefaultGoals(quarterId) {
@@ -294,3 +320,89 @@ export async function fetchStats(quarterId) {
 
   return { completed, totalScore, avgScore, enteredDays: days.length }
 }
+
+export async function fetchQuarterById(quarterId) {
+  const { data, error } = await supabase
+    .from('quarters')
+    .select('*')
+    .eq('id', quarterId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function fetchGoalTargetedCounts(quarterId) {
+  const { data, error } = await supabase
+    .from('days')
+    .select('top3_goal_ids')
+    .eq('quarter_id', quarterId)
+  if (error) throw error
+  const counts = {}
+  ;(data || []).forEach(row => {
+    const ids = Array.isArray(row.top3_goal_ids) ? row.top3_goal_ids : []
+    ids.forEach(id => {
+      if (id) {
+        const key = String(id)
+        counts[key] = (counts[key] || 0) + 1
+      }
+    })
+  })
+  return counts
+}
+
+export async function fetchWeekDaysSummary(quarter, weekNumber) {
+  const { startDay, endDay } = weekRange(quarter, weekNumber)
+  const { data, error } = await supabase
+    .from('days')
+    .select('day_number, checks, scores')
+    .eq('quarter_id', quarter.id)
+    .gte('day_number', startDay)
+    .lte('day_number', endDay)
+    .order('day_number')
+  if (error) throw error
+  return data || []
+}
+
+export async function fetchTasks(quarterId = null, filter = {}) {
+  let query = supabase.from('tasks').select('*')
+  if (quarterId) {
+    query = query.or(`quarter_id.eq.${quarterId},quarter_id.is.null`)
+  }
+  if (filter.status && filter.status !== 'all') {
+    query = query.eq('status', filter.status)
+  }
+  if (filter.urgency && filter.urgency !== 'all') {
+    query = query.eq('urgency', filter.urgency)
+  }
+  query = query.order('created_at', { ascending: false })
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+export async function upsertTask(task) {
+  const payload = {
+    quarter_id: task.quarter_id || null,
+    title: task.title,
+    urgency: task.urgency || 'medium',
+    arena: task.arena || null,
+    status: task.status || 'pending',
+    due_date: task.due_date || null,
+    remind_at: task.remind_at || null,
+    reminder_sent: task.reminder_sent ?? false,
+    notes: task.notes || '',
+  }
+  const query = task.id
+    ? supabase.from('tasks').update(payload).eq('id', task.id)
+    : supabase.from('tasks').insert(payload)
+
+  const { data, error } = await query.select().single()
+  if (error) throw error
+  return data
+}
+
+export async function deleteTask(taskId) {
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+  if (error) throw error
+}
+

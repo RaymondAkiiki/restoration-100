@@ -4,6 +4,19 @@
   padding: 12px 0;
 }
 
+.navRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.navBtns {
+  display: flex;
+  gap: 6px;
+}
+
 .dayHeader {
   border: 1px solid var(--fg);
   padding: 13px 15px;

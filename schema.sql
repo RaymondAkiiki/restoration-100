@@ -76,6 +76,21 @@ create table if not exists public.quarter_reviews (
   updated_at      timestamptz not null default now()
 );
 
+create table if not exists public.tasks (
+  id              bigint generated always as identity primary key,
+  quarter_id      bigint references public.quarters(id) on delete cascade,
+  title           text not null,
+  urgency         text not null default 'medium' check (urgency in ('urgent', 'high', 'medium', 'low')),
+  arena           text default null,
+  status          text not null default 'pending' check (status in ('pending', 'in_progress', 'completed', 'cancelled')),
+  due_date        date default null,
+  remind_at       timestamptz default null,
+  reminder_sent   boolean not null default false,
+  notes           text not null default '',
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
 -- Migration support for older 100-day installations.
 alter table public.days add column if not exists quarter_id bigint references public.quarters(id) on delete cascade;
 alter table public.days add column if not exists top3_goal_ids jsonb not null default '["","",""]';
@@ -173,21 +188,29 @@ create trigger trg_quarter_reviews_updated_at
   before update on public.quarter_reviews
   for each row execute function public.set_updated_at();
 
+drop trigger if exists trg_tasks_updated_at on public.tasks;
+create trigger trg_tasks_updated_at
+  before update on public.tasks
+  for each row execute function public.set_updated_at();
+
 -- Open RLS policies (no auth - personal app)
 alter table public.quarters enable row level security;
 alter table public.days enable row level security;
 alter table public.weeks enable row level security;
 alter table public.quarter_goals enable row level security;
 alter table public.quarter_reviews enable row level security;
+alter table public.tasks enable row level security;
 
 drop policy if exists "allow_all_quarters" on public.quarters;
 drop policy if exists "allow_all_days" on public.days;
 drop policy if exists "allow_all_weeks" on public.weeks;
 drop policy if exists "allow_all_quarter_goals" on public.quarter_goals;
 drop policy if exists "allow_all_quarter_reviews" on public.quarter_reviews;
+drop policy if exists "allow_all_tasks" on public.tasks;
 
 create policy "allow_all_quarters" on public.quarters for all using (true) with check (true);
 create policy "allow_all_days" on public.days for all using (true) with check (true);
 create policy "allow_all_weeks" on public.weeks for all using (true) with check (true);
 create policy "allow_all_quarter_goals" on public.quarter_goals for all using (true) with check (true);
 create policy "allow_all_quarter_reviews" on public.quarter_reviews for all using (true) with check (true);
+create policy "allow_all_tasks" on public.tasks for all using (true) with check (true);

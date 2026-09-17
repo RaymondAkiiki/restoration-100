@@ -1,0 +1,245 @@
+.h2 {
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.intro {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.summaryCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--surface);
+}
+
+.cardLabel {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.cardVal {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.quickAdd {
+  border: 1px solid var(--fg);
+  padding: 14px;
+  background: var(--surface);
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quickAddRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.titleInput {
+  flex: 1 1 240px;
+}
+
+.selectWrap {
+  flex: 0 1 140px;
+}
+
+.dateInput {
+  flex: 0 1 140px;
+}
+
+.filterBar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.filterBtn {
+  padding: 4px 10px;
+  font-size: 10px;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.taskItem {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.1s;
+}
+
+.taskItem:hover {
+  border-color: var(--fg);
+}
+
+.taskDone {
+  opacity: 0.6;
+}
+
+.taskDone .taskTitle {
+  text-decoration: line-through;
+}
+
+.taskMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.taskCheck {
+  margin-top: 2px;
+}
+
+.taskBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.taskTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.taskTitle {
+  font-size: 13px;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.taskMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badgeUrgent {
+  border-color: var(--danger, #cc0000);
+  color: var(--danger, #cc0000);
+  font-weight: bold;
+}
+
+.badgeHigh {
+  border-color: #d97706;
+  color: #d97706;
+}
+
+.badgeMedium {
+  border-color: var(--border-d);
+  color: var(--fg);
+}
+
+.badgeLow {
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.arenaTag {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 10px;
+  padding: 1px 5px;
+  color: var(--muted);
+}
+
+.dateTag {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.overdue {
+  color: var(--danger, #cc0000);
+  font-weight: bold;
+}
+
+.dueToday {
+  color: #d97706;
+  font-weight: bold;
+}
+
+.taskActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 2px 6px;
+  cursor: pointer;
+  letter-spacing: 0;
+}
+
+.iconBtn:hover {
+  color: var(--fg);
+  background: none;
+}
+
+.taskNotesRow {
+  margin-top: 4px;
+  padding-left: 26px;
+}
+
+.notesInput {
+  font-size: 11px;
+  padding: 4px 6px;
+}
+
+.emptyState {
+  border: 1px dashed var(--border);
+  padding: 30px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.statusLine {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+}

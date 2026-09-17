@@ -32,6 +32,34 @@
   margin-bottom: 14px;
 }
 
+.bridgeBanner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.bridgeTitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.bridgeBadges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bridgeBadge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
 .bizGrid {
   display: flex;
   flex-direction: column;

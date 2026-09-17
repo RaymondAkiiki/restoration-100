@@ -59,38 +59,54 @@ export const BIZ_FIELDS = [
   { key: 'relationships', label: 'Meaningful conversations' },
 ]
 
+export const TASK_URGENCIES = [
+  { key: 'urgent', label: 'Urgent', icon: '🔴', weight: 4 },
+  { key: 'high', label: 'High', icon: '🟠', weight: 3 },
+  { key: 'medium', label: 'Medium', icon: '🟡', weight: 2 },
+  { key: 'low', label: 'Low', icon: '⚪', weight: 1 },
+]
+
+export const TASK_STATUSES = [
+  { key: 'pending', label: 'Pending' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'cancelled', label: 'Cancelled' },
+]
+
 export function parseDate(value) {
-  if (value instanceof Date) return new Date(value.getFullYear(), value.getMonth(), value.getDate())
+  if (value instanceof Date) {
+    return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()))
+  }
   const [y, m, d] = String(value).slice(0, 10).split('-').map(Number)
-  return new Date(y, m - 1, d)
+  return new Date(Date.UTC(y, m - 1, d))
 }
 
 export function isoDate(date) {
   const d = parseDate(date)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
+  const y = d.getUTCFullYear()
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const day = String(d.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
 export function totalDays(quarter) {
-  const start = parseDate(quarter.start_date)
-  const end = parseDate(quarter.end_date)
-  return Math.floor((end - start) / 86400000) + 1
+  const start = parseDate(quarter.start_date).getTime()
+  const end = parseDate(quarter.end_date).getTime()
+  return Math.round((end - start) / 86400000) + 1
 }
 
 export function dayDate(quarter, n) {
   const d = parseDate(quarter.start_date)
-  d.setDate(d.getDate() + n - 1)
+  d.setUTCDate(d.getUTCDate() + n - 1)
   return d
 }
 
 export function todayDayN(quarter) {
   if (!quarter) return 0
   const now = new Date()
-  now.setHours(0, 0, 0, 0)
-  const start = parseDate(quarter.start_date)
-  const n = Math.floor((now - start) / 86400000) + 1
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+  const startUtc = parseDate(quarter.start_date).getTime()
+  const n = Math.round((todayUtc - startUtc) / 86400000) + 1
   const days = totalDays(quarter)
   if (n < 1) return 0
   if (n > days) return days + 1
@@ -119,12 +135,16 @@ export function quarterPhase(quarter, n) {
 
 export function fmtDate(d) {
   return parseDate(d).toLocaleDateString('en-GB', {
+    timeZone: 'UTC',
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
 export function fmtShort(d) {
-  return parseDate(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return parseDate(d).toLocaleDateString('en-GB', {
+    timeZone: 'UTC',
+    day: 'numeric', month: 'short'
+  })
 }
 
 export function arenaLabel(key) {

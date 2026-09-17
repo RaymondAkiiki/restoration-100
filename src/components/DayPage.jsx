@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { fetchDay, fetchQuarterGoals, upsertDay } from '../lib/db.js'
 import {
   CHECKS, SCORE_ITEMS, arenaLabel, blankDay, dayChecks, dayDate,
-  dayScore, fmtDate, quarterPhase, todayDayN,
+  dayScore, fmtDate, quarterPhase, todayDayN, totalDays,
 } from '../lib/constants.js'
 import Sec from './Sec.jsx'
 import s from './DayPage.module.css'
@@ -24,6 +24,7 @@ const FieldRow = ({ label, value, onChange, disabled, multiline, placeholder }) 
 )
 
 export default function DayPage({ quarter, n, role, onBack }) {
+  const [currN, setCurrN] = useState(n)
   const [day, setDay] = useState(null)
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,39 +33,85 @@ export default function DayPage({ quarter, n, role, onBack }) {
   const [dirty, setDirty] = useState(false)
 
   const own = role === 'owner'
-  const ph = quarterPhase(quarter, n)
+  const maxDays = totalDays(quarter)
+  const ph = quarterPhase(quarter, currN)
+  const draftKey = `draft_day_${quarter.id}_${currN}`
+
+  useEffect(() => {
+    setCurrN(n)
+  }, [n])
 
   useEffect(() => {
     setLoading(true)
     setDirty(false)
     setStatus('')
+
+    const savedDraft = localStorage.getItem(draftKey)
+    let localDraft = null
+    if (savedDraft) {
+      try {
+        localDraft = JSON.parse(savedDraft)
+      } catch {
+        // ignore parse error
+      }
+    }
+
     Promise.all([
-      fetchDay(quarter, n),
+      fetchDay(quarter, currN),
       fetchQuarterGoals(quarter.id),
     ])
       .then(([d, g]) => {
-        setDay(d)
+        if (localDraft && own) {
+          setDay({ ...d, ...localDraft })
+          setDirty(true)
+          setStatus('Restored unsaved draft from local storage.')
+        } else {
+          setDay(d)
+        }
         setGoals(g.filter(goal => goal.status === 'active' || goal.status === 'achieved'))
         setLoading(false)
       })
       .catch(() => {
-        setDay(blankDay(quarter, n))
+        if (localDraft && own) {
+          setDay(localDraft)
+          setDirty(true)
+          setStatus('Restored unsaved draft from local storage.')
+        } else {
+          setDay(blankDay(quarter, currN))
+        }
         setLoading(false)
       })
-  }, [quarter, n])
+  }, [quarter, currN, draftKey, own])
 
   function patch(fn) {
-    setDay(prev => { const next = { ...prev }; fn(next); return next })
+    setDay(prev => {
+      const next = { ...prev }
+      fn(next)
+      if (own) {
+        try {
+          localStorage.setItem(draftKey, JSON.stringify(next))
+        } catch {
+          // ignore
+        }
+      }
+      return next
+    })
     setDirty(true)
     setStatus('')
   }
 
-  async function save() {
+  const save = useCallback(async () => {
+    if (!day) return
     setSaving(true)
     try {
       const saved = await upsertDay(quarter, day)
       setDay(saved)
       setDirty(false)
+      try {
+        localStorage.removeItem(draftKey)
+      } catch {
+        // ignore
+      }
       setStatus('saved')
       setTimeout(() => setStatus(''), 2500)
     } catch (err) {
@@ -72,27 +119,60 @@ export default function DayPage({ quarter, n, role, onBack }) {
     } finally {
       setSaving(false)
     }
-  }
+  }, [day, quarter, draftKey])
 
-  if (loading) return <div className={s.loading}>Loading day {n}...</div>
-  if (!day) return <div className={s.loading}>Could not load day {n}.</div>
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (dirty && !saving && own) {
+          save()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [dirty, saving, own, save])
+
+  if (loading) return <div className={s.loading}>Loading day {currN}...</div>
+  if (!day) return <div className={s.loading}>Could not load day {currN}.</div>
 
   const score = dayScore(day)
   const checks = dayChecks(day)
-  const isToday = n === todayDayN(quarter)
+  const isToday = currN === todayDayN(quarter)
 
   return (
     <div>
-      {onBack && (
-        <button className="sm" style={{ marginBottom: 13 }} onClick={onBack}>
-          Back to Quarter
-        </button>
-      )}
+      <div className={s.navRow}>
+        <div>
+          {onBack && (
+            <button className="sm" onClick={onBack}>
+              Back to Quarter
+            </button>
+          )}
+        </div>
+        <div className={s.navBtns}>
+          <button
+            className="sm"
+            disabled={currN <= 1}
+            onClick={() => setCurrN(prev => Math.max(1, prev - 1))}
+          >
+            ← Prev Day
+          </button>
+          <button
+            className="sm"
+            disabled={currN >= maxDays}
+            onClick={() => setCurrN(prev => Math.min(maxDays, prev + 1))}
+          >
+            Next Day →
+          </button>
+        </div>
+      </div>
 
       <div className={s.dayHeader}>
         <div>
-          <div className={s.dayNum}>Day {n}</div>
-          <div className={s.dayDate}>{fmtDate(dayDate(quarter, n))}</div>
+          <div className={s.dayNum}>Day {currN}</div>
+          <div className={s.dayDate}>{fmtDate(dayDate(quarter, currN))}</div>
           <div className={s.phaseName}>{ph.name}</div>
           <div className={s.phaseDesc}>{ph.desc}</div>
           {isToday && <div className={s.todayBadge}>Today</div>}

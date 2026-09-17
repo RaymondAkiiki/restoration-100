@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   createNextQuarter,
   deleteQuarterGoal,
+  fetchGoalTargetedCounts,
   fetchQuarterGoals,
   fetchQuarterReview,
   upsertQuarterGoal,
@@ -29,9 +30,11 @@ const Field = ({ label, children }) => (
   </div>
 )
 
-export default function TargetsPage({ quarter, onQuarterChanged }) {
+export default function TargetsPage({ quarter, onQuarterChanged, readOnly = false }) {
   const [goals, setGoals] = useState([])
   const [review, setReview] = useState(null)
+  const [targetedCounts, setTargetedCounts] = useState({})
+  const [rolloverGoalIds, setRolloverGoalIds] = useState([])
   const [draft, setDraft] = useState(emptyGoal(quarter))
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
@@ -42,9 +45,12 @@ export default function TargetsPage({ quarter, onQuarterChanged }) {
     Promise.all([
       fetchQuarterGoals(quarter.id),
       fetchQuarterReview(quarter),
-    ]).then(([goalRows, reviewRow]) => {
+      fetchGoalTargetedCounts(quarter.id),
+    ]).then(([goalRows, reviewRow, counts]) => {
       setGoals(goalRows)
       setReview(reviewRow)
+      setTargetedCounts(counts || {})
+      setRolloverGoalIds(goalRows.filter(g => g.status === 'active').map(g => g.id))
     })
   }, [quarter])
 
@@ -102,7 +108,10 @@ export default function TargetsPage({ quarter, onQuarterChanged }) {
     setSaving(true)
     try {
       if (review) await upsertQuarterReview(quarter, review)
-      const next = await createNextQuarter(quarter, { next_theme: review?.next_theme })
+      const next = await createNextQuarter(quarter, {
+        next_theme: review?.next_theme,
+        rolloverGoalIds,
+      })
       onQuarterChanged(next)
     } catch (err) {
       setStatus('error: ' + err.message)
@@ -140,6 +149,8 @@ export default function TargetsPage({ quarter, onQuarterChanged }) {
             <GoalEditor
               key={goal.id}
               goal={goal}
+              targetedCount={targetedCounts[String(goal.id)] || 0}
+              readOnly={readOnly}
               saving={saving}
               onChange={next => replaceGoal(next)}
               onSave={() => saveGoal(goal)}
@@ -149,30 +160,32 @@ export default function TargetsPage({ quarter, onQuarterChanged }) {
         </Sec>
       ))}
 
-      <Sec title="Add Goal">
-        <div className={s.goalEdit}>
-          <Field label="Arena">
-            <select value={draft.arena} onChange={e => setDraft({ ...draft, arena: e.target.value })}>
-              {ARENAS.map(arena => <option key={arena.key} value={arena.key}>{arena.label}</option>)}
-            </select>
-          </Field>
-          <Field label="Goal">
-            <input type="text" value={draft.title}
-              placeholder="Example: Contact 20 landlords each week"
-              onChange={e => setDraft({ ...draft, title: e.target.value })} />
-          </Field>
-          <Field label="Target">
-            <input type="text" value={draft.target_value}
-              placeholder="Example: 20 contacts/week"
-              onChange={e => setDraft({ ...draft, target_value: e.target.value })} />
-          </Field>
-          <button className="inv" disabled={saving || !draft.title.trim()} onClick={() => saveGoal(draft)}>
-            Add Goal
-          </button>
-        </div>
-      </Sec>
+      {!readOnly && (
+        <Sec title="Add Goal">
+          <div className={s.goalEdit}>
+            <Field label="Arena">
+              <select value={draft.arena} onChange={e => setDraft({ ...draft, arena: e.target.value })}>
+                {ARENAS.map(arena => <option key={arena.key} value={arena.key}>{arena.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Goal">
+              <input type="text" value={draft.title}
+                placeholder="Example: Contact 20 landlords each week"
+                onChange={e => setDraft({ ...draft, title: e.target.value })} />
+            </Field>
+            <Field label="Target">
+              <input type="text" value={draft.target_value}
+                placeholder="Example: 20 contacts/week"
+                onChange={e => setDraft({ ...draft, target_value: e.target.value })} />
+            </Field>
+            <button className="inv" disabled={saving || !draft.title.trim()} onClick={() => saveGoal(draft)}>
+              Add Goal
+            </button>
+          </div>
+        </Sec>
+      )}
 
-      {review && (
+      {review && !readOnly && (
         <Sec title="Quarter Review & Rollover">
           <div className={s.reviewGrid}>
             {[
@@ -190,6 +203,27 @@ export default function TargetsPage({ quarter, onQuarterChanged }) {
               </Field>
             ))}
           </div>
+
+          <div className={s.rolloverList}>
+            <div className={s.rolloverHeader}>Carry over active goals into next quarter:</div>
+            {goals.map(g => (
+              <label key={g.id} className={s.rolloverItem}>
+                <input
+                  type="checkbox"
+                  checked={rolloverGoalIds.includes(g.id)}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setRolloverGoalIds(prev => [...prev, g.id])
+                    } else {
+                      setRolloverGoalIds(prev => prev.filter(id => id !== g.id))
+                    }
+                  }}
+                />
+                <span>[{arenaLabel(g.arena)}] {g.title} {g.target_value ? `(${g.target_value})` : ''}</span>
+              </label>
+            ))}
+          </div>
+
           <div className={s.actionRow}>
             <button onClick={saveReview} disabled={saving}>Save Review</button>
             <button className="inv" onClick={startNextQuarter} disabled={saving}>
@@ -221,16 +255,29 @@ export default function TargetsPage({ quarter, onQuarterChanged }) {
   )
 }
 
-function GoalEditor({ goal, saving, onChange, onSave, onDelete }) {
+function GoalEditor({ goal, targetedCount, readOnly, saving, onChange, onSave, onDelete }) {
   return (
     <div className={s.goalEdit}>
       <div className={s.goalTop}>
         <div>
           <div className={s.goalArena}>{arenaLabel(goal.arena)}</div>
-          <input type="text" value={goal.title}
-            onChange={e => onChange({ ...goal, title: e.target.value })} />
+          <input
+            type="text"
+            value={goal.title}
+            disabled={readOnly}
+            onChange={e => onChange({ ...goal, title: e.target.value })}
+          />
+          {targetedCount > 0 && (
+            <div className={s.targetedBadge}>
+              Targeted on {targetedCount} {targetedCount === 1 ? 'day' : 'days'} in Top 3
+            </div>
+          )}
         </div>
-        <select value={goal.status} onChange={e => onChange({ ...goal, status: e.target.value })}>
+        <select
+          value={goal.status}
+          disabled={readOnly}
+          onChange={e => onChange({ ...goal, status: e.target.value })}
+        >
           <option value="active">Active</option>
           <option value="achieved">Achieved</option>
           <option value="paused">Paused</option>
@@ -239,22 +286,36 @@ function GoalEditor({ goal, saving, onChange, onSave, onDelete }) {
       </div>
       <div className={s.goalTwo}>
         <Field label="Target">
-          <input type="text" value={goal.target_value ?? ''}
-            onChange={e => onChange({ ...goal, target_value: e.target.value })} />
+          <input
+            type="text"
+            value={goal.target_value ?? ''}
+            disabled={readOnly}
+            onChange={e => onChange({ ...goal, target_value: e.target.value })}
+          />
         </Field>
         <Field label="Current">
-          <input type="text" value={goal.current_value ?? ''}
-            onChange={e => onChange({ ...goal, current_value: e.target.value })} />
+          <input
+            type="text"
+            value={goal.current_value ?? ''}
+            disabled={readOnly}
+            onChange={e => onChange({ ...goal, current_value: e.target.value })}
+          />
         </Field>
       </div>
       <Field label="Notes">
-        <textarea rows={2} value={goal.notes ?? ''}
-          onChange={e => onChange({ ...goal, notes: e.target.value })} />
+        <textarea
+          rows={2}
+          value={goal.notes ?? ''}
+          disabled={readOnly}
+          onChange={e => onChange({ ...goal, notes: e.target.value })}
+        />
       </Field>
-      <div className={s.actionRow}>
-        <button className="inv" disabled={saving || !goal.title.trim()} onClick={onSave}>Save Goal</button>
-        <button disabled={saving} onClick={onDelete}>Delete</button>
-      </div>
+      {!readOnly && (
+        <div className={s.actionRow}>
+          <button className="inv" disabled={saving || !goal.title.trim()} onClick={onSave}>Save Goal</button>
+          <button disabled={saving} onClick={onDelete}>Delete</button>
+        </div>
+      )}
     </div>
   )
 }

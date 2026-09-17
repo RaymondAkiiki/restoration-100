@@ -79,3 +79,22 @@
   gap: 5px;
   flex-wrap: wrap;
 }
+
+.quarterSelect {
+  font-size: 10px;
+  padding: 3px 6px;
+  margin-top: 6px;
+  max-width: 220px;
+  border: 1px solid var(--border-d);
+}
+
+.archivedBadge {
+  display: inline-block;
+  font-size: 9px;
+  background: var(--fg);
+  color: var(--bg);
+  padding: 1px 5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-left: 6px;
+}

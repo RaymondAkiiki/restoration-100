@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { fetchAllWeeks, fetchWeek, upsertWeek } from '../lib/db.js'
+import { useState, useEffect, useCallback } from 'react'
+import { fetchAllWeeks, fetchWeek, fetchWeekDaysSummary, upsertWeek } from '../lib/db.js'
 import { BIZ_FIELDS, fmtShort, dayDate, todayDayN, totalDays, weekForDay, weekRange } from '../lib/constants.js'
 import Sec from './Sec.jsx'
 import s from './WeekPage.module.css'
@@ -10,12 +10,14 @@ export default function WeekPage({ quarter, role }) {
   const tn = Math.max(1, Math.min(days, todayDayN(quarter) || 1))
   const [w, setW] = useState(weekForDay(tn))
   const [week, setWeek] = useState(null)
+  const [weekDays, setWeekDays] = useState([])
   const [allW, setAllW] = useState([])
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState('')
   const [dirty, setDirty] = useState(false)
 
   const own = role === 'owner'
+  const draftKey = `draft_week_${quarter.id}_${w}`
 
   useEffect(() => {
     fetchAllWeeks(quarter.id).then(rows => setAllW(rows))
@@ -24,16 +26,51 @@ export default function WeekPage({ quarter, role }) {
   useEffect(() => {
     setDirty(false)
     setStatus('')
-    fetchWeek(quarter, w).then(d => setWeek(d))
-  }, [quarter, w])
+
+    const savedDraft = localStorage.getItem(draftKey)
+    let localDraft = null
+    if (savedDraft) {
+      try {
+        localDraft = JSON.parse(savedDraft)
+      } catch {
+        // ignore
+      }
+    }
+
+    Promise.all([
+      fetchWeek(quarter, w),
+      fetchWeekDaysSummary(quarter, w),
+    ]).then(([d, dDays]) => {
+      if (localDraft && own) {
+        setWeek({ ...d, ...localDraft })
+        setDirty(true)
+        setStatus('Restored unsaved draft from local storage.')
+      } else {
+        setWeek(d)
+      }
+      setWeekDays(dDays || [])
+    })
+  }, [quarter, w, draftKey, own])
 
   function patch(fn) {
-    setWeek(prev => { const next = { ...prev }; fn(next); return next })
+    setWeek(prev => {
+      const next = { ...prev }
+      fn(next)
+      if (own) {
+        try {
+          localStorage.setItem(draftKey, JSON.stringify(next))
+        } catch {
+          // ignore
+        }
+      }
+      return next
+    })
     setDirty(true)
     setStatus('')
   }
 
-  async function save() {
+  const save = useCallback(async () => {
+    if (!week) return
     setSaving(true)
     try {
       const saved = await upsertWeek(quarter, week)
@@ -44,6 +81,11 @@ export default function WeekPage({ quarter, role }) {
         return [...prev, saved]
       })
       setDirty(false)
+      try {
+        localStorage.removeItem(draftKey)
+      } catch {
+        // ignore
+      }
       setStatus('saved')
       setTimeout(() => setStatus(''), 2500)
     } catch (err) {
@@ -51,10 +93,29 @@ export default function WeekPage({ quarter, role }) {
     } finally {
       setSaving(false)
     }
-  }
+  }, [week, quarter, draftKey])
+
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        if (dirty && !saving && own) {
+          save()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [dirty, saving, own, save])
 
   const { startDay, endDay } = weekRange(quarter, w)
   const filledWeeks = allW.filter(x => x.biz_metrics?.revenue)
+
+  const countChecks = key => weekDays.filter(d => d.checks?.[key]).length
+  const bodyCount = countChecks('body')
+  const salesCount = countChecks('sales')
+  const moneyCount = countChecks('money')
+  const deepCount = countChecks('deep')
 
   return (
     <div>
@@ -93,6 +154,15 @@ export default function WeekPage({ quarter, role }) {
       {week && (
         <>
           <Sec title="Weekly Scoreboard" defaultOpen>
+            <div className={s.bridgeBanner}>
+              <div className={s.bridgeTitle}>Daily Checks Evidence ({weekDays.length}/7 days logged this week):</div>
+              <div className={s.bridgeBadges}>
+                <span className={s.bridgeBadge}>Body / Workout: <strong>{bodyCount} / 7</strong></span>
+                <span className={s.bridgeBadge}>Sales Action: <strong>{salesCount} / 7</strong></span>
+                <span className={s.bridgeBadge}>Money Tracked: <strong>{moneyCount} / 7</strong></span>
+                <span className={s.bridgeBadge}>Deep Work: <strong>{deepCount} / 7</strong></span>
+              </div>
+            </div>
             <div className={s.bizGrid}>
               {BIZ_FIELDS.map(({ key, label }) => (
                 <div key={key} className={s.bizRow}>

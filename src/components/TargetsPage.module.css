@@ -64,6 +64,41 @@
   margin-bottom: 3px;
 }
 
+.targetedBadge {
+  font-size: 10px;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-d);
+  padding: 2px 6px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.rolloverList {
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.rolloverHeader {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.rolloverItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 .goalTwo {
   display: grid;
   grid-template-columns: 1fr 1fr;

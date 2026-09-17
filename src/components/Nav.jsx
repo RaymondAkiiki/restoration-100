@@ -1,7 +1,16 @@
 import { fmtDate, dayDate, quarterPhase, todayDayN, totalDays } from '../lib/constants.js'
 import s from './Nav.module.css'
 
-export default function Nav({ view, setView, role, setRole, stats, quarter }) {
+export default function Nav({
+  view,
+  setView,
+  role,
+  setRole,
+  stats,
+  quarter,
+  quarters = [],
+  onSelectQuarter,
+}) {
   const tn = todayDayN(quarter)
   const days = totalDays(quarter)
   const inQuarter = tn >= 1 && tn <= days
@@ -9,12 +18,16 @@ export default function Nav({ view, setView, role, setRole, stats, quarter }) {
   const pct = inQuarter ? Math.round((tn / days) * 100) : (tn > days ? 100 : 0)
   const done = stats?.completed ?? 0
   const elapsed = Math.max(1, Math.min(tn || 1, days))
+  const isArchived = quarter.status === 'archived'
 
   return (
     <header className={s.header}>
       <div className={s.top}>
         <div>
-          <div className={s.title}>Quarterly Restoration</div>
+          <div className={s.title}>
+            Quarterly Restoration
+            {isArchived && <span className={s.archivedBadge}>Archived</span>}
+          </div>
           <div className={s.sub}>
             {quarter.label} - {quarter.theme || 'Build the operator, then build the outcomes.'}
           </div>
@@ -25,6 +38,21 @@ export default function Nav({ view, setView, role, setRole, stats, quarter }) {
               ? `Quarter complete - ended ${fmtDate(quarter.end_date)}`
               : `Day ${tn} of ${days} - ${ph?.name} - ${fmtDate(dayDate(quarter, tn))}`}
           </div>
+          {quarters.length > 1 && onSelectQuarter && (
+            <div>
+              <select
+                className={s.quarterSelect}
+                value={quarter.id}
+                onChange={e => onSelectQuarter(Number(e.target.value))}
+              >
+                {quarters.map(q => (
+                  <option key={q.id} value={q.id}>
+                    {q.label} {q.status === 'active' ? '(Active)' : '(Archived)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className={s.roleWrap}>
           <div className={s.roleLabel}>View</div>
@@ -57,6 +85,7 @@ export default function Nav({ view, setView, role, setRole, stats, quarter }) {
       <nav className={s.nav}>
         {[
           ['today', 'Today'],
+          ['tasks', 'Tasks'],
           ['calendar', 'Quarter'],
           ['weekly', 'Weekly'],
           ['targets', 'Goals'],
