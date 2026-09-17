@@ -9,6 +9,12 @@ export default async function handler(req, res) {
       status: 'ok',
       service: 'Restoration Telegram Bot Webhook',
       timestamp: new Date().toISOString(),
+      configured: {
+        TELEGRAM_BOT_TOKEN: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+        TELEGRAM_CHAT_ID: Boolean(process.env.TELEGRAM_CHAT_ID),
+        VITE_SUPABASE_URL: Boolean(process.env.VITE_SUPABASE_URL),
+        VITE_SUPABASE_ANON_KEY: Boolean(process.env.VITE_SUPABASE_ANON_KEY),
+      },
     })
   }
 

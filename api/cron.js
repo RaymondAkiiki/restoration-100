@@ -2,10 +2,10 @@ import { Bot, InlineKeyboard } from 'grammy'
 import { createClient } from '@supabase/supabase-js'
 
 export default async function handler(req, res) {
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL
-  const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY
+  const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://fqaehhlfhymwdkyygorg.supabase.co'
+  const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxYWVoaGxmaHltd2RreXlnb3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzOTk2MjIsImV4cCI6MjA4OTk3NTYyMn0.FKH6x414ldu-tR-8EsAXFZ0aZcFLb4erstiqw98kmMk'
   const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
-  const CHAT_ID = process.env.TELEGRAM_CHAT_ID ? Number(process.env.TELEGRAM_CHAT_ID) : null
+  const CHAT_ID = process.env.TELEGRAM_CHAT_ID ? Number(process.env.TELEGRAM_CHAT_ID) : 6824870531
 
   if (!BOT_TOKEN || !CHAT_ID || !SUPABASE_URL || !SUPABASE_KEY) {
     return res.status(200).json({ status: 'skipped', reason: 'Missing credentials' })
