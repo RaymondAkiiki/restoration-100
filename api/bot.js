@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     try {
       if (!webhookHandler) {
         const { bot } = createBot()
-        webhookHandler = webhookCallback(bot, 'node:http')
+        webhookHandler = webhookCallback(bot, 'next-js')
       }
       return await webhookHandler(req, res)
     } catch (err) {
