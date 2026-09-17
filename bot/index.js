@@ -46,6 +46,14 @@ function urgencyEmoji(urgency) {
   }
 }
 
+function formatSupabaseError(err) {
+  const msg = err?.message || String(err)
+  if (err?.code === 'PGRST205' || msg.includes('schema cache') || msg.includes('does not exist')) {
+    return "⚠️ The database table 'public.tasks' has not been created in Supabase yet!\n\nPlease open your Supabase SQL Editor and run migration_tasks.sql to enable tasks."
+  }
+  return `Error: ${msg}`
+}
+
 // Commands
 bot.command('start', async (ctx) => {
   activeChatId = ctx.chat.id
@@ -107,7 +115,7 @@ bot.command('tasks', async (ctx) => {
     }
   } catch (err) {
     console.error(err)
-    await ctx.reply(`Error fetching tasks: ${err.message}`)
+    await ctx.reply(formatSupabaseError(err))
   }
 })
 
@@ -138,7 +146,7 @@ bot.command('add', async (ctx) => {
       reply_markup: keyboard,
     })
   } catch (err) {
-    await ctx.reply(`Error adding task: ${err.message}`)
+    await ctx.reply(formatSupabaseError(err))
   }
 })
 
@@ -169,7 +177,7 @@ bot.command('urgent', async (ctx) => {
       reply_markup: keyboard,
     })
   } catch (err) {
-    await ctx.reply(`Error adding urgent task: ${err.message}`)
+    await ctx.reply(formatSupabaseError(err))
   }
 })
 
@@ -347,6 +355,7 @@ setInterval(async () => {
 console.log('Quarterly Restoration Telegram Bot starting...')
 bot.start({
   onStart: (botInfo) => {
-    console.log(`Bot @${botInfo.username} is running and listening for commands.`)
+    console.log(`✓ Bot @${botInfo.username} is live and actively listening for commands!`)
+    console.log(`NOTE: This is a continuous background listener. Keep this process running to receive Telegram notifications. (Press Ctrl+C to stop)`)
   },
 })
